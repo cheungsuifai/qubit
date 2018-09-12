@@ -1,0 +1,59 @@
+﻿Root_ID,Sub_ID,Content,Type,Node,Mode,Command,Rule
+1,1,测试OAM VIP连接性,Check,OSS,N/A,"ping <oam_vip>
+ssh <user>@<oam_vip>",Connection available
+1,2,检查PG的系统状态，确认是否所有板卡的所有软件模块均处于OK状态,Check,PG,OAM,bootloader.py node status -h all -d true,"Modules should be Running & OK status. 
+Modules should not be in Stopped or NOK status."
+1,3,确认是否少量板卡无法承载业务,Check,PG,OAM,"/home/tools/kpi_tool/show_kpi.sh -b <begin_time : yyyyMMdd-hhmm> -e <end_time : yyyyMMdd-hhmm> -t cmd
+/home/tools/kpi_tool/show_kpi.sh -b <begin_time : yyyyMMdd-hhmm> -e <end_time : yyyyMMdd-hhmm> -t pl
+/home/tools/kpi_tool/show_kpi.sh -b <begin_time : yyyyMMdd-hhmm> -e <end_time : yyyyMMdd-hhmm> -t err
+/home/tools/kpi_tool/show_kpi.sh -b <begin_time : yyyyMMdd-hhmm> -e <end_time : yyyyMMdd-hhmm> -t sb","No key error
+Provisioning distribution balanced"
+1,4,检查所有板卡的EVIP是否正常,Check,PG,OAM,ifconfig,"SC EVIP:
+PL EVIP:"
+1,5,检查系统告警，确认是否存在CPU和内存告警,Check,PG,OAM,fmactivealarms,No memory and cpu highload alarm
+1,6,检查所有板卡的硬盘状态,Check,PG,OAM,"for a in `awk '/SC-/{print $2}' /etc/hosts`; do echo $blade; ssh -o connectTimeout=5 $blade ""smartctl -a /dev/sdb""; done;
+for blade in `awk '/PL-/{print $2}' /etc/hosts`; do echo $blade; ssh -o connectTimeout=5 $blade ""smartctl -a /dev/sda; done;","a)	if SMART HEALTH STATUS is OK and Total uncorrected Errors is < 100 ? BOARD IS OK (no needs to be replaced)
+b)	if SMART HEALTH STATUS is OK and Total uncorrected Errors is > 100 ? BOARD IS NOT OK (needs to be replaced)
+c)	if SMART HEALTH STATUS is different than OK ? BOARD IS NOT OK (needs to be replaced)"
+1,7,测试SOAP接口可用性,Check,PG,OAM,python /home/tools/soap_command_line/soap_command_line.py,login successfully
+1,8,重启异常GEP板卡,Fix,PG,OAM,cluster reboot -n <node_id>,
+1,9,重置异常GEP板卡,Fix,PG,DMX,"set ManagedElement 1 Equipment 1 Shelf <shelf_id> Slot <slot_id> Blade 1 administrativeState locked
+set ManagedElement 1 Equipment 1 Shelf <shelf_id> Slot <slot_id> Blade 1 administrativeState unlocked",
+1,10,重启所有GEP板卡,Fix,PG,OAM,cluster reboot -a,
+1,11,闭塞异常GEP板卡,Fix,PG,DMX,set ManagedElement 1 Equipment 1 Shelf <shelf_id> Slot <slot_id> Blade 1 administrativeState locked,
+1,12,由业支更改业务指向到正常的PG,Fix,Boss,N/A,N/A,
+2,1,确认PG到CUDB的IP链路状态,Check,PG,OAM,ping <CUDB-PROVISIONING-VIP>,
+2,2,确认PG到HLRFE的IP链路状态,Check,PG,OAM,ping <HLRFE-BC-PROV-CLUSTER-IP>,
+2,3,确认PG到HSSFE的IP链路状态,Check,PG,OAM,ping <HSS-LDAP-VIP>,
+3,1,检查CUDB系统状态,Check,CUDB,OAM,cudbSystemStatus," (1)The time and date is right,
+ (2)CUDB software version is right, 
+ (3)BC server running on SC_2_1,SC_2_2,PL_2_5, and one BC server is Leader on each node,System Monitor threads status on each system controller board are OK.
+ (4)Clusters status on each PL and DS is OK, the memory usage lower than 80% 
+ (5)There are 4 or 6 NDBs process are running on PL Unit and 2 NDBs process are running on each DS Unit, 
+ (6)Replication Channels are OK, 'M': Master, 'Sn': Slave — replication channel #n is active. 
+ (7)There is no new alarm is printed
+ (5)MySQL servers connection are listed as “OK”; 
+ (6)CUDB Processes in OAMs, PLs and DSs are listed as “running”;"
+3,2,检查CUDB的LDAP业务量均衡性,Check,CUDB,OAM,"show_ldap_tps | grep ""err=0""",
+3,3,"查看CUDB LDAPFE的错误码记录，确认是否出现80,51等错误码",Check,CUDB,OAM,N/A,
+3,4,检查CUDB所有GEP板卡硬盘状况,Check,CUDB,OAM,N/A,
+3,5,重启CUDB单个LDAPFE,Fix,CUDB,OAM,etc/init.d/LdapFrontEnd restart,
+3,6,重启CUDB所有LDAPFE,Fix,CUDB,OAM,cudbLdapFeRestart,
+3,7,CUDB DSG 主备倒换,Fix,CUDB,OAM,cudbDsgMastershipchange,
+3,8,闭塞CUDB故障的GEP板卡,Fix,CUDB,OAM,"set ManagedElement 1 Equipment 1 Shelf <shelf_id> Slot <slot_id> Blade 1 administrativeState locked
+set ManagedElement 1 Equipment 1 Shelf <shelf_id> Slot <slot_id> Blade 1 administrativeState unlocked",
+3,9,登录PG GUI，隔离受影响的CUDB,Fix,PG,GUI,N/A,
+3,10,在CUDB侧，隔离受影响的CUDB,Fix,CUDB,NWI,N/A,
+4,1,测试HLRFE MML可用性/稳定性,Check,HLR-FE,TSS,mml,
+4,2,重启APG MML资源,Fix,HLR-FE,TSS,N/A,
+4,3,检查PG账号,Check,HLR-FE,TSS,localuserlist -d PGUser,
+4,4,执行APG倒边,Fix,HLR-FE,APS/TSS,prcboot,
+4,5,登录PG GUI，隔离受影响的HLRFE,Fix,PG,GUI,N/A,
+5,1,检查PG KPI，确认失败SOAP请求的错误码,Check,PG,OAM,/home/tools/kpi_tool/show_kpi.sh -b <begin_time : yyyyMMdd-hhmm> -e <end_time : yyyyMMdd-hhmm> -t err,
+5,2,根据错误码，追踪proclog确认发生数据损坏的用户ID,Check,PG,OAM,/home/tools/find_proclog/find_proclog.sh -f <from_time : yyyyMMdd-hhmm> -t <to_time : yyyyMMdd-hhmm> -c <error_code>,
+5,3,根据错误码，追踪proclog确认出现冲突的参数值,Check,PG,OAM,/home/tools/find_proclog/find_proclog.sh -f <from_time : yyyyMMdd-hhmm> -t <to_time : yyyyMMdd-hhmm> -c <error_code>,
+5,4,根据用户ID，清理损坏的用户数据，并由BOSS补回数据,Fix,CUDB,OAM,N/A,
+5,5,根据局数据标准修改网元的参数或者建议Boss使用合适的参数,Fix,N/A,N/A,N/A,
+6,1,登录PG GUI，隔离受影响的HSSFE,Fix,PG,GUI,N/A,
+7,1,登录PG GUI，解锁账号,Fix,PG,GUI,N/A,
+8,1,联系业务确认是否存在异常业务发放,Check,N/A,N/A,N/A,
